@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Voidmaw — Immersive Abyssal Particle Swarm</title>
+    <!-- Tailwind CSS for modern glassmorphism styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for cinematic icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; background: #030305; color: #f3f4f6; }
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: rgba(10, 10, 18, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .glass-button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+        }
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+        .glass-button.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.6);
+            color: #34d399;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        /* Custom range slider styling */
+        input[type=range] {
+            accent-color: #10b981;
+        }
+        /* Custom scrollbar for control panel */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(16, 185, 129, 0.5);
+        }
+    </style>
+    <!-- Import Map for Three.js and Addons -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body class="relative w-screen h-screen overflow-hidden select-none">
+
+    <!-- Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+    <!-- Top Bar Header -->
+    <header class="absolute top-4 left-4 right-4 z-20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pointer-events-none">
+        <div class="glass-panel px-5 py-3 rounded-2xl pointer-events-auto flex items-center space-x-3">
+            <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_#10b981]"></div>
+            <div>
+                <h1 class="text-lg font-bold tracking-wider text-white uppercase flex items-center gap-2">
+                    The Voidmaw <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Abyssal Entity</span>
+                </h1>
+                <p id="entity-subtitle" class="text-xs text-gray-400">An ancient abyssal entity of writhing black tendrils</p>
+            </div>
+        </div>
+
+        <!-- Top Action Buttons -->
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <button id="btn-info" class="glass-button px-4 py-2.5 rounded-xl text-sm font-medium text-gray-200 flex items-center gap-2 shadow-lg hover:text-white">
+                <i class="fa-solid fa-circle-info text-emerald-400"></i> <span class="hidden sm:inline">Lore</span>
+            </button>
+            <button id="btn-snapshot" class="glass-button px-4 py-2.5 rounded-xl text-sm font-medium text-gray-200 flex items-center gap-2 shadow-lg hover:text-white">
+                <i class="fa-solid fa-camera text-emerald-400"></i> <span class="hidden sm:inline">Snapshot</span>
+            </button>
+            <button id="btn-fullscreen" class="glass-button px-4 py-2.5 rounded-xl text-sm font-medium text-gray-200 flex items-center gap-2 shadow-lg hover:text-white">
+                <i class="fa-solid fa-expand text-emerald-400"></i> <span class="hidden sm:inline">Fullscreen</span>
+            </button>
+            <button id="btn-toggle-ui" class="glass-button p-2.5 rounded-xl text-sm font-medium text-gray-200 shadow-lg hover:text-white" title="Toggle Controls">
+                <i class="fa-solid fa-sliders text-emerald-400"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Control Panel Sidebar -->
+    <aside id="control-panel" class="absolute top-24 right-4 z-20 w-80 max-h-[calc(100vh-7rem)] overflow-y-auto glass-panel rounded-3xl p-5 transition-all duration-300 flex flex-col gap-5 shadow-2xl">
+        <div class="flex justify-between items-center border-b border-white/10 pb-3">
+            <h2 class="text-sm font-semibold tracking-wider text-emerald-400 uppercase flex items-center gap-2">
+                <i class="fa-solid fa-sliders"></i> Swarm Parameters
+            </h2>
+            <button id="btn-reset" class="text-xs text-gray-400 hover:text-emerald-400 transition-colors flex items-center gap-1">
+                <i class="fa-solid fa-rotate-right"></i> Reset
+            </button>
+        </div>
+
+        <!-- Presets Section -->
+        <div class="flex flex-col gap-2">
+            <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">Abyssal Presets</span>
+            <div class="grid grid-cols-2 gap-2">
+                <button class="preset-btn glass-button text-xs py-2 px-3 rounded-xl text-left font-medium text-gray-200 truncate" data-preset="sovereign">
+                    Abyssal Sovereign
+                </button>
+                <button class="preset-btn glass-button text-xs py-2 px-3 rounded-xl text-left font-medium text-gray-200 truncate" data-preset="hyper">
+                    Hyper-Writh
+                </button>
+                <button class="preset-btn glass-button text-xs py-2 px-3 rounded-xl text-left font-medium text-gray-200 truncate" data-preset="dormant">
+                    Dormant Eye
+                </button>
+                <button class="preset-btn glass-button text-xs py-2 px-3 rounded-xl text-left font-medium text-gray-200 truncate" data-preset="chaos">
+                    Chaos Swarm
+                </button>
+            </div>
+        </div>
+
+        <!-- Sliders Section -->
+        <div class="flex flex-col gap-4">
+            <!-- Core Size Slider -->
+            <div class="flex flex-col gap-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-300 font-medium">Core Size (<span id="val-void">22</span>)</span>
+                    <span class="text-gray-500 text-[10px]">10 - 40</span>
+                </div>
+                <input type="range" id="param-void" min="10" max="40" step="1" value="22" class="w-full bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+            </div>
+
+            <!-- Tendril Count Slider -->
+            <div class="flex flex-col gap-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-300 font-medium">Tendril Count (<span id="val-tendrils">9</span>)</span>
+                    <span class="text-gray-500 text-[10px]">4 - 16</span>
+                </div>
+                <input type="range" id="param-tendrils" min="4" max="16" step="1" value="9" class="w-full bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+            </div>
+
+            <!-- Tendril Reach Slider -->
+            <div class="flex flex-col gap-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-300 font-medium">Tendril Reach (<span id="val-reach">55</span>)</span>
+                    <span class="text-gray-500 text-[10px]">20 - 100</span>
+                </div>
+                <input type="range" id="param-reach" min="20" max="100" step="1" value="55" class="w-full bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+            </div>
+
+            <!-- Writhing Speed Slider -->
+            <div class="flex flex-col gap-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-300 font-medium">Writhing Speed (<span id="val-writhe">2.2</span>)</span>
+                    <span class="text-gray-500 text-[10px]">0 - 5</span>
+                </div>
+                <input type="range" id="param-writhe" min="0" max="5" step="0.1" value="2.2" class="w-full bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+            </div>
+
+            <!-- Eye Glow Intensity Slider -->
+            <div class="flex flex-col gap-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-300 font-medium">Eye Gaze Glow (<span id="val-gaze">3.0</span>)</span>
+                    <span class="text-gray-500 text-[10px]">0 - 5</span>
+                </div>
+                <input type="range" id="param-gaze" min="0" max="5" step="0.1" value="3.0" class="w-full bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+            </div>
+
+            <!-- Corruption Chaos Slider -->
+            <div class="flex flex-col gap-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-300 font-medium">Corruption Chaos (<span id="val-corrupt">2.5</span>)</span>
+                    <span class="text-gray-500 text-[10px]">0 - 5</span>
+                </div>
+                <input type="range" id="param-corrupt" min="0" max="5" step="0.1" value="2.5" class="w-full bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+            </div>
+        </div>
+
+        <!-- Simulation Toggles -->
+        <div class="border-t border-white/10 pt-3 flex flex-col gap-2">
+            <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-300 font-medium">Auto Rotation</span>
+                <button id="btn-autospin" class="px-3 py-1 rounded-lg text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition-all">Active</button>
+            </div>
+            <div class="flex justify-between items-center text-xs">
+                <span class="text-gray-300 font-medium">Particle Count</span>
+                <span class="text-emerald-400 font-mono">20,000</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="glass-panel max-w-lg w-full p-6 rounded-3xl flex flex-col gap-4 relative shadow-2xl scale-95 transition-transform duration-300" id="modal-content">
+            <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-book-skull text-emerald-400"></i> The Voidmaw Codex
+                </h3>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-white p-1 rounded-lg transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="text-sm text-gray-300 leading-relaxed flex flex-col gap-3">
+                <p><strong>The Voidmaw</strong> is an ancient abyssal entity dwelling in the interdimensional rifts of digital space. Composed of over 20,000 sentient energetic tetrahedrons, it continuously reshapes its writhing black tendrils around a burning core eye.</p>
+                <p>The entity feeds on dimensional chaos. As you tweak the parameters, the swarm reacts in real-time, shifting its core geometry, tendril reach, and the intensity of its crimson gaze.</p>
+                <div class="bg-white/5 border border-white/10 p-3 rounded-2xl flex flex-col gap-1.5 mt-2">
+                    <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Navigation Controls</span>
+                    <ul class="text-xs text-gray-400 list-disc list-inside space-y-1">
+                        <li><strong>Left Click + Drag:</strong> Rotate around the entity</li>
+                        <li><strong>Right Click + Drag:</strong> Pan camera view</li>
+                        <li><strong>Scroll Wheel:</strong> Zoom in and out</li>
+                    </ul>
+                </div>
+            </div>
+            <button id="btn-close-modal-bottom" class="glass-button w-full py-3 rounded-xl text-sm font-medium text-emerald-400 hover:text-emerald-300 text-center mt-2">
+                Acknowledge Codex
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass-panel px-5 py-3 rounded-2xl text-sm font-medium text-emerald-300 shadow-2xl flex items-center gap-3 transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-message">Snapshot captured successfully!</span>
+    </div>
+
+    <!-- Simulation Script -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // CONFIG & PARAMS STATE
+        const COUNT = 20000;
+        const SPEED_MULT = 1;
+        let AUTO_SPIN = true;
+
+        const PARAMS = {
+            "void": 22,
+            "tendrils": 9,
+            "reach": 55,
+            "writhe": 2.2,
+            "gaze": 3.0,
+            "corrupt": 2.5
+        };
+
+        // UI Element bindings
+        const paramSliders = {
+            "void": document.getElementById('param-void'),
+            "tendrils": document.getElementById('param-tendrils'),
+            "reach": document.getElementById('param-reach'),
+            "writhe": document.getElementById('param-writhe'),
+            "gaze": document.getElementById('param-gaze'),
+            "corrupt": document.getElementById('param-corrupt')
+        };
+
+        const paramValueLabels = {
+            "void": document.getElementById('val-void'),
+            "tendrils": document.getElementById('val-tendrils'),
+            "reach": document.getElementById('val-reach'),
+            "writhe": document.getElementById('val-writhe'),
+            "gaze": document.getElementById('val-gaze'),
+            "corrupt": document.getElementById('val-corrupt')
+        };
+
+        // Update slider UI and state when adjusted
+        Object.keys(paramSliders).forEach(key => {
+            paramSliders[key].addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                PARAMS[key] = val;
+                paramValueLabels[key].innerText = val.toFixed(key === 'writhe' || key === 'gaze' || key === 'corrupt' ? 1 : 0);
+            });
+        });
+
+        // SETUP THREE.JS SCENE
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x030305, 0.01);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 0, 100);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = AUTO_SPIN;
+        controls.autoRotateSpeed = 1.5;
+
+        // POST PROCESSING (Bloom)
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.strength = 1.8; 
+        bloomPass.radius = 0.4; 
+        bloomPass.threshold = 0;
+        composer.addPass(bloomPass);
+
+        // SWARM OBJECTS & GEOMETRY
+        const dummy = new THREE.Object3D();
+        const color = new THREE.Color();
+        const target = new THREE.Vector3();
+        
+        const geometry = new THREE.TetrahedronGeometry(0.25);
+        const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        
+        const instancedMesh = new THREE.InstancedMesh(geometry, material, COUNT);
+        instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        scene.add(instancedMesh);
+
+        // DATA ARRAYS
+        const positions = [];
+        for(let i = 0; i < COUNT; i++) {
+            positions.push(new THREE.Vector3((Math.random() - 0.5) * 100, (Math.random() - 0.5) * 100, (Math.random() - 0.5) * 100));
+            instancedMesh.setColorAt(i, color.setHex(0x00ff88));
+        }
+
+        // CONTROL STUBS FOR COMPATIBILITY
+        const addControl = (id, label, min, max, val) => {
+            return PARAMS[id] !== undefined ? PARAMS[id] : val;
+        };
+        const setInfo = (title, desc) => {
+            const subtitleEl = document.getElementById('entity-subtitle');
+            if (subtitleEl && subtitleEl.innerText !== desc) {
+                subtitleEl.innerText = desc;
+            }
+        };
+        const annotate = (id, pos, text) => {};
+
+        // ANIMATION LOOP
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime() * SPEED_MULT;
+            
+            if(material.uniforms && material.uniforms.uTime) {
+                material.uniforms.uTime.value = time;
+            }
+
+            controls.update();
+
+            // SWARM LOGIC
+            const count = COUNT;
+            for(let i = 0; i < COUNT; i++) {
+                 const voidRadius = addControl("void", "Core Size", 10, 40, 22);
+                 const tendrilCount = addControl("tendrils", "Tendril Count", 4, 16, 9);
+                 const tendrilLength = addControl("reach", "Tendril Reach", 20, 100, 55);
+                 const writheSpeed = addControl("writhe", "Writhing Speed", 0, 5, 2.2);
+                 const eyeGlow = addControl("gaze", "Eye Glow Intensity", 0, 5, 3);
+                 const corruption = addControl("corrupt", "Corruption Chaos", 0, 5, 2.5);
+                 
+                 const safeCount = count > 1 ? count : 2;
+                 const fi = i / safeCount;
+                 const seedA = Math.sin(i * 12.9898) * 43758.5453;
+                 const randA = seedA - Math.floor(seedA);
+                 const seedB = Math.sin(i * 78.233 + 3.1) * 12345.678;
+                 const randB = seedB - Math.floor(seedB);
+                 const seedC = Math.sin(i * 45.164 + 7.7) * 98765.432;
+                 const randC = seedC - Math.floor(seedC);
+                 
+                 const part = fi < 0.3 ? 0 : (fi < 0.85 ? 1 : 2);
+                 const corePhi = Math.acos(1 - 2 * randA);
+                 const coreTheta = randB * Math.PI * 2 + time * writheSpeed * 0.2;
+                 const coreWobble = Math.sin(corePhi * 5 + time * 1.5) * corruption * 0.3;
+                 const coreR = voidRadius * (0.7 + randC * 0.3) + coreWobble;
+                 const coreX = coreR * Math.sin(corePhi) * Math.cos(coreTheta);
+                 const coreY = coreR * Math.cos(corePhi);
+                 const coreZ = coreR * Math.sin(corePhi) * Math.sin(coreTheta);
+                 
+                 const safeTendrilCount = Math.max(1, Math.floor(tendrilCount));
+                 const tIndex = i % safeTendrilCount;
+                 const tendrilBaseAngle = (tIndex / safeTendrilCount) * Math.PI * 2;
+                 const tendrilElevation = Math.sin(tIndex * 2.3) * 1.2;
+                 const along = randA;
+                 const reach = along * tendrilLength;
+                 const writheX = Math.sin(along * 6 + time * writheSpeed + tIndex) * corruption * along * 2;
+                 const writheZ = Math.cos(along * 5 - time * writheSpeed * 0.8 + tIndex) * corruption * along * 2;
+                 const writheY = Math.sin(along * 8 + time * writheSpeed * 1.3 + tIndex * 2) * corruption * along;
+                 const spikeJag = (randB - 0.5) * (1 - along) * 2;
+                 
+                 const tendrilX = Math.cos(tendrilBaseAngle) * (voidRadius + reach) + writheX + spikeJag;
+                 const tendrilY = Math.sin(tendrilElevation) * reach * 0.4 + writheY;
+                 const tendrilZ = Math.sin(tendrilBaseAngle) * (voidRadius + reach) + writheZ + spikeJag;
+                 
+                 const eyePhi = Math.acos(1 - 2 * randB) * 0.35 + Math.PI * 0.5;
+                 const eyeTheta = randA * Math.PI * 2;
+                 const irisRing = Math.abs(Math.sin(eyeTheta * 8)) < 0.3 ? 1 : 0;
+                 const eyeX = (voidRadius * 0.92) * Math.sin(eyePhi) * Math.cos(eyeTheta) * 0.3;
+                 const eyeY = (voidRadius * 0.92) * Math.cos(eyePhi) * 0.3 + voidRadius * 0.1;
+                 const eyeZ = voidRadius * 1.05 + randC * 2;
+                 
+                 const px = part === 0 ? coreX : (part === 1 ? tendrilX : eyeX);
+                 const py = part === 0 ? coreY : (part === 1 ? tendrilY : eyeY);
+                 const pz = part === 0 ? coreZ : (part === 1 ? tendrilZ : eyeZ);
+                 
+                 target.set(px, py, pz);
+                 
+                 const pulse = 0.5 + 0.5 * Math.sin(time * eyeGlow * 1.5);
+                 const corruptFlicker = 0.5 + 0.5 * Math.sin(time * 4 + randA * 10);
+                 const voidHue = 0.75 + coreWobble * 0.02;
+                 const voidLight = 0.08 + corruptFlicker * 0.06;
+                 const tendrilHue = 0.78 - along * 0.1;
+                 const tendrilLight = 0.06 + (1 - along) * 0.1 + spikeJag * 0.02;
+                 const eyeHue = irisRing ? 0.0 : 0.02;
+                 const eyeLight = irisRing ? (0.3 + pulse * 0.4) : (0.5 + pulse * 0.4);
+                 
+                 const finalHue = part === 0 ? voidHue : (part === 1 ? tendrilHue : eyeHue);
+                 const finalSat = part === 0 ? 0.6 : (part === 1 ? 0.7 : 0.95);
+                 const finalLight = part === 0 ? voidLight : (part === 1 ? tendrilLight : eyeLight);
+                 
+                 color.setHSL(Math.max(finalHue, 0), finalSat, Math.min(Math.max(finalLight, 0.02), 0.95));
+                 
+                 if (i === 0) {
+                     setInfo("The Voidmaw", "An ancient abyssal entity of writhing black tendrils and a single burning red eye.");
+                 }
+
+                 positions[i].lerp(target, 0.1);
+                 dummy.position.copy(positions[i]);
+                 dummy.updateMatrix();
+                 instancedMesh.setMatrixAt(i, dummy.matrix);
+                 instancedMesh.setColorAt(i, color);
+            }
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            instancedMesh.instanceColor.needsUpdate = true;
+
+            composer.render();
+        }
+        animate();
+
+        // RESIZE HANDLER
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // UI INTERACTION LOGIC
+        const controlPanel = document.getElementById('control-panel');
+        const btnToggleUi = document.getElementById('btn-toggle-ui');
+        const btnInfo = document.getElementById('btn-info');
+        const infoModal = document.getElementById('info-modal');
+        const modalContent = document.getElementById('modal-content');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnCloseModalBottom = document.getElementById('btn-close-modal-bottom');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        const btnSnapshot = document.getElementById('btn-snapshot');
+        const btnAutospin = document.getElementById('btn-autospin');
+        const btnReset = document.getElementById('btn-reset');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+
+        // Toggle Control Panel
+        let uiVisible = true;
+        btnToggleUi.addEventListener('click', () => {
+            uiVisible = !uiVisible;
+            controlPanel.style.opacity = uiVisible ? '1' : '0';
+            controlPanel.style.pointerEvents = uiVisible ? 'auto' : 'none';
+            controlPanel.style.transform = uiVisible ? 'translateY(0)' : 'translateY(20px)';
+        });
+
+        // Info Modal Handlers
+        const openModal = () => {
+            infoModal.classList.remove('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        };
+        const closeModal = () => {
+            infoModal.classList.add('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+        };
+
+        btnInfo.addEventListener('click', openModal);
+        btnCloseModal.addEventListener('click', closeModal);
+        btnCloseModalBottom.addEventListener('click', closeModal);
+        infoModal.addEventListener('click', (e) => {
+            if(e.target === infoModal) closeModal();
+        });
+
+        // Fullscreen Toggle
+        btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    showToast("Error enabling fullscreen");
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        // Auto-spin Toggle
+        btnAutospin.addEventListener('click', () => {
+            AUTO_SPIN = !AUTO_SPIN;
+            controls.autoRotate = AUTO_SPIN;
+            if (AUTO_SPIN) {
+                btnAutospin.innerText = "Active";
+                btnAutospin.className = "px-3 py-1 rounded-lg text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition-all";
+            } else {
+                btnAutospin.innerText = "Paused";
+                btnAutospin.className = "px-3 py-1 rounded-lg text-xs font-medium bg-white/5 text-gray-400 border border-white/10 transition-all";
+            }
+        });
+
+        // Toast Notification helper
+        function showToast(msg) {
+            toastMessage.innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Snapshot Feature
+        btnSnapshot.addEventListener('click', () => {
+            renderer.render(scene, camera);
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'voidmaw-snapshot.png';
+            link.href = dataURL;
+            link.click();
+            showToast("Snapshot saved successfully!");
+        });
+
+        // Presets Configuration Data
+        const PRESETS = {
+            sovereign: { void: 22, tendrils: 9, reach: 55, writhe: 2.2, gaze: 3.0, corrupt: 2.5 },
+            hyper: { void: 30, tendrils: 16, reach: 85, writhe: 4.5, gaze: 5.0, corrupt: 4.2 },
+            dormant: { void: 15, tendrils: 6, reach: 30, writhe: 0.5, gaze: 1.0, corrupt: 0.8 },
+            chaos: { void: 35, tendrils: 12, reach: 95, writhe: 5.0, gaze: 4.5, corrupt: 5.0 }
+        };
+
+        // Apply Preset Function
+        function applyPreset(name) {
+            const p = PRESETS[name];
+            if(!p) return;
+            Object.keys(p).forEach(k => {
+                PARAMS[k] = p[k];
+                if(paramSliders[k]) paramSliders[k].value = p[k];
+                if(paramValueLabels[k]) paramValueLabels[k].innerText = p[k].toFixed(k === 'writhe' || k === 'gaze' || k === 'corrupt' ? 1 : 0);
+            });
+            showToast(`Loaded preset: ${name.toUpperCase()}`);
+        }
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const presetName = btn.getAttribute('data-preset');
+                applyPreset(presetName);
+            });
+        });
+
+        // Reset Button
+        btnReset.addEventListener('click', () => {
+            applyPreset('sovereign');
+        });
+    </script>
+</body>
+</html>
